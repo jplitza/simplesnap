@@ -286,8 +286,26 @@ backupto() {
         exiterror "Dataset \"$DATASET\" contains ..; something is wrong.  Aborting."
     fi
 
+    # determine support for stream resumption
+    RECV_ARGS=""
+    zfs receive -s "$DESTDIR" 2> /dev/null < /dev/null | true
+    if [ "${PIPESTATUS[0]}" != "2" ]; then
+        RECV_ARGS="-s"
+        TOKEN="$(zfs get -H -o value receive_resume_token "${DESTDIR}")"
+        if [ "$TOKEN" != "-" ]; then
+            if runwrap resume "${TOKEN}" | \
+               runzfs receive "${RECV_ARGS}" -F "${DESTDIR}"; then
+
+                logit "Finished previous backup into ${DESTDIR}"
+            else
+                logerror "zfs receive died with error: $?"
+                exit 100
+            fi
+        fi
+    fi
+
     if runwrap sendback "${SETNAME}" "${DATASET}" | \
-       runzfs receive -F "${DESTDIR}"; then
+       runzfs receive "${RECV_ARGS}" -F "${DESTDIR}"; then
 
         logit "Received backup into ${DESTDIR}"
         runwrap reap "${SETNAME}" "${DATASET}"

@@ -78,6 +78,11 @@ if [ "$1" = "reinvoked" ]; then
        $ZFS list -t filesystem,volume -o "name,${EXCLUDEPROP}" -H | \
           $GREP -v $'\ton$' | $SED $'s/\t.*$//'
        ;;
+    "resume")
+       TOKEN="$1"
+       logit "Sending continuation stream with token ${TOKEN}."
+       $ZFS send -t "$TOKEN"
+       ;;
     "sendback")
        # Next lines shared with reap
        TEMPLATE="__simplesnap_$1_"
